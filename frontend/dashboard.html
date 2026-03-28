@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - RoadFix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="js/theme.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo"><i class="fas fa-road"></i> RoadFix</a>
+            <div class="nav-right">
+                <ul class="nav-links">
+                    <li><a href="index.html">Report Issue</a></li>
+                    <li><a href="dashboard.html" class="active">Dashboard</a></li>
+                </ul>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
+                    <i class="fas fa-moon" id="theme-icon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="dashboard-header">
+            <div>
+                <h1>Community <span>Dashboard.</span></h1>
+                <p>View, manage and resolve reported civilian road maintenance issues.</p>
+            </div>
+        </header>
+
+        <section class="filters-container">
+            <div class="filter-group">
+                <label for="filterCategory"><i class="fas fa-filter"></i> Category:</label>
+                <select id="filterCategory">
+                    <option value="">All Categories</option>
+                    <option value="Pothole">Pothole</option>
+                    <option value="Blocked Drain">Blocked Drain</option>
+                    <option value="Streetlight Issue">Streetlight Issue</option>
+                    <option value="Faded Road Signs">Faded Road Signs</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterStatus"><i class="fas fa-tasks"></i> Status:</label>
+                <select id="filterStatus">
+                    <option value="">All Statuses</option>
+                    <option value="Reported">Reported</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Loader -->
+        <div id="loader" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+
+        <section class="reports-grid" id="reportsGrid">
+            <!-- Dynamic Report Cards injected here via JS -->
+        </section>
+    </main>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
