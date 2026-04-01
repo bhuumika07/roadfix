@@ -1,8 +1,8 @@
-const API_URL = 'http://localhost:3000/api/reports';
-const IMAGE_BASE_URL = 'http://localhost:3000'; // Make sure this matches the backend port
+const API_URL = '/api/reports';
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchReports();
+    fetchStats();
 
     document.getElementById('filterCategory').addEventListener('change', fetchReports);
     document.getElementById('filterStatus').addEventListener('change', fetchReports);
@@ -56,9 +56,8 @@ function renderReports(reports) {
         const card = document.createElement('div');
         card.className = 'report-card';
         
-        const imageUrl = report.image_url 
-            ? `${IMAGE_BASE_URL}${report.image_url}` 
-            : 'https://via.placeholder.com/400x200?text=No+Image+Provided';
+        // Use Image URL or Placeholder
+        const imageUrl = report.image_url || 'https://via.placeholder.com/400x200?text=No+Image+Provided';
 
         const dateStr = new Date(report.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -119,30 +118,28 @@ function renderReports(reports) {
             if (newStatus === 'Resolved') {
                 solution = prompt('Please describe how this issue was resolved (or leave blank):');
                 if (solution === null) {
-                    // User clicked cancel, revert select
                     fetchReports();
                     return;
                 }
             }
 
-            // visually indicate updating
             e.target.disabled = true;
             await updateStatus(reportId, newStatus, solution);
-            fetchReports(); // Refresh the list
+            fetchReports();
         });
     });
 
     // Add event listeners to delete buttons
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            // Find the closest button element in case the icon was clicked
             const targetBtn = e.target.closest('button');
             const reportId = targetBtn.getAttribute('data-id');
             if (confirm('Are you sure you want to permanently delete this report?')) {
                 const card = targetBtn.closest('.report-card');
                 card.style.opacity = '0.5';
                 await deleteReport(reportId);
-                fetchReports(); // Refresh the list
+                fetchReports();
+                fetchStats();
             }
         });
     });
@@ -154,12 +151,12 @@ async function deleteReport(id) {
             method: 'DELETE'
         });
         if (!response.ok) {
-            console.error('Failed to delete report');
-            alert('Failed to delete report. Please try again.');
+            showToast('Failed to delete report. Please try again.', 'error');
+        } else {
+            showToast('Report permanently deleted.', 'info');
         }
     } catch (err) {
-        console.error(err);
-        alert('Network error while deleting report.');
+        showToast('Network error while deleting report.', 'error');
     }
 }
 
@@ -178,16 +175,17 @@ async function updateStatus(id, newStatus, solution) {
             body: JSON.stringify(payload)
         });
         if (!response.ok) {
-            console.error('Failed to update status');
-            alert('Failed to update status. Please try again.');
+            showToast('Failed to update status. Please try again.', 'error');
+        } else {
+            showToast('Status updated successfully.', 'success');
+            fetchStats();
         }
     } catch (err) {
-        console.error(err);
-        alert('Network error while updating status.');
+        showToast('Network error while updating status.', 'error');
     }
 }
 
-// Basic HTML escaper to prevent XSS
+// Basic HTML escaper
 function escapeHTML(str) {
     if (!str) return str;
     return str.replace(/[&<>'"]/g, 
@@ -199,4 +197,80 @@ function escapeHTML(str) {
             '"': '&quot;'
         }[tag])
     );
+}
+
+// Toast Utility
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'exclamation-circle';
+    if (type === 'warning') icon = 'exclamation-triangle';
+    
+    toast.innerHTML = `<i class="fas fa-${icon}"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Fetch Stats
+async function fetchStats() {
+    try {
+        const response = await fetch(`${API_URL}/stats`);
+        const data = await response.json();
+        const statsContainer = document.getElementById('statsContainer');
+        if (!statsContainer) return;
+        
+        let total = 0, reported = 0, progress = 0, resolved = 0;
+        
+        if (response.ok && data.data) {
+            data.data.forEach(stat => {
+                total += stat.count;
+                if (stat.status === 'Reported') reported = stat.count;
+                if (stat.status === 'In Progress') progress = stat.count;
+                if (stat.status === 'Resolved') resolved = stat.count;
+            });
+        }
+        
+        statsContainer.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-icon total"><i class="fas fa-list-alt"></i></div>
+                <div class="stat-details">
+                    <h3>${total}</h3>
+                    <p>Total Issues</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon reported"><i class="fas fa-bullhorn"></i></div>
+                <div class="stat-details">
+                    <h3>${reported}</h3>
+                    <p>Newly Reported</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon progress"><i class="fas fa-tools"></i></div>
+                <div class="stat-details">
+                    <h3>${progress}</h3>
+                    <p>In Progress</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon resolved"><i class="fas fa-check"></i></div>
+                <div class="stat-details">
+                    <h3>${resolved}</h3>
+                    <p>Resolved</p>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        console.error('Stats error:', e);
+    }
 }

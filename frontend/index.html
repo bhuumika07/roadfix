@@ -6,8 +6,8 @@
     <title>RoadFix - Citizen Feedback</title>
     <!-- Outfit Font -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="js/theme.js"></script>
-    <link rel="stylesheet" href="css/style.css">
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="style.css">
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -56,16 +56,12 @@
                         </select>
                     </div>
                     <div>
-                        <label>Photo Evidence</label>
-                        <div class="file-upload-wrapper" id="dropzone">
-                            <input type="file" id="image" name="image" accept="image/*">
-                            <div class="file-upload-content" id="uploadContent">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <div class="file-upload-text">Click or drag image to upload</div>
-                                <div class="file-upload-help">PNG, JPG up to 5MB</div>
-                            </div>
-                            <img id="imagePreview" alt="Image preview">
+                        <label for="image_url">Image URL</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-link"></i>
+                            <input type="url" id="image_url" name="image_url" placeholder="Paste a link to a photo (Imgur, Google Photos, etc.)">
                         </div>
+                        <div class="help-text">Provide a link to an image of the issue.</div>
                     </div>
                 </div>
 
@@ -97,6 +93,6 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
