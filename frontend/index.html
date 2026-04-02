@@ -56,16 +56,12 @@
                         </select>
                     </div>
                     <div>
-                        <label>Photo Evidence</label>
-                        <div class="file-upload-wrapper" id="dropzone">
+                        <label for="image">Upload Image</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-camera"></i>
                             <input type="file" id="image" name="image" accept="image/*">
-                            <div class="file-upload-content" id="uploadContent">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <div class="file-upload-text">Click or drag image to upload</div>
-                                <div class="file-upload-help">PNG, JPG up to 5MB</div>
-                            </div>
-                            <img id="imagePreview" alt="Image preview">
                         </div>
+                        <div class="help-text">Attach a photo of the road issue (Max 5MB).</div>
                     </div>
                 </div>
 
@@ -92,6 +88,25 @@
                 </button>
                 <div id="formMessage" class="message hidden"></div>
             </form>
+
+            <!-- Success Banner (shown after submission) -->
+            <div id="successBanner" class="success-banner hidden">
+                <div class="success-banner-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="success-banner-body">
+                    <h3>Report Submitted Successfully! 🎉</h3>
+                    <p id="successDetail">Your issue has been logged and assigned a tracking ID.</p>
+                    <div class="success-banner-actions">
+                        <button class="btn-success-report" onclick="resetToForm()">
+                            <i class="fas fa-plus"></i> Submit Another Report
+                        </button>
+                        <a href="dashboard.html" class="btn-success-dashboard">
+                            <i class="fas fa-tachometer-alt"></i> View on Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
