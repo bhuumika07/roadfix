@@ -3,3 +3,7 @@ backend/uploads/*
 !backend/uploads/.gitkeep
 *.env
 .env
+
+# Live data files — do not commit
+backend/db/reports.txt
+backend/reports.txt
