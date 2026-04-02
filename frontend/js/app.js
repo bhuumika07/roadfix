@@ -1,9 +1,31 @@
 // Constants
-const API_URL = 'http://localhost:3000/api/reports';
+const API_URL = '/api/reports';
 
 // Map Initialization
 let map;
 let marker;
+
+// Toast Utility
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'exclamation-circle';
+    if (type === 'warning') icon = 'exclamation-triangle';
+    
+    toast.innerHTML = `<i class="fas fa-${icon}"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize map if coordinates exist on page (index.html)
@@ -16,70 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('reportForm');
     if (form) {
         form.addEventListener('submit', handleFormSubmit);
-    }
-
-    // Custom File Upload Preview
-    const imageInput = document.getElementById('image');
-    const imagePreview = document.getElementById('imagePreview');
-    const uploadContent = document.getElementById('uploadContent');
-
-    if (imageInput && imagePreview && uploadContent) {
-        imageInput.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imagePreview.src = e.target.result;
-                    imagePreview.style.display = 'block';
-                    uploadContent.style.display = 'none';
-                }
-                reader.readAsDataURL(file);
-            } else {
-                imagePreview.src = '';
-                imagePreview.style.display = 'none';
-                uploadContent.style.display = 'flex';
-            }
-        });
-
-        // Optional: Drag and drop styling
-        const dropzone = document.getElementById('dropzone');
-        if (dropzone) {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropzone.addEventListener(eventName, preventDefaults, false);
-            });
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropzone.addEventListener(eventName, highlight, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropzone.addEventListener(eventName, unhighlight, false);
-            });
-
-            function highlight(e) {
-                dropzone.style.borderColor = 'var(--primary)';
-                dropzone.style.background = 'rgba(79, 70, 229, 0.05)';
-            }
-
-            function unhighlight(e) {
-                dropzone.style.borderColor = 'var(--border)';
-                dropzone.style.background = '#f8fafc';
-            }
-
-            dropzone.addEventListener('drop', handleDrop, false);
-
-            function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                imageInput.files = files;
-                imageInput.dispatchEvent(new Event('change'));
-            }
-        }
     }
 });
 
@@ -107,6 +65,7 @@ function initMap() {
         updateInputs(position.lat, position.lng);
     });
 
+    // Geolocation
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -151,20 +110,19 @@ async function handleFormSubmit(e) {
         const data = await response.json();
 
         if (response.ok) {
-            msgBox.innerHTML = '<i class="fas fa-check-circle"></i> Report submitted successfully! Thank you for your contribution.';
-            msgBox.className = 'message success';
-            form.reset();
-            
-            // Reset image preview
-            const imagePreview = document.getElementById('imagePreview');
-            const uploadContent = document.getElementById('uploadContent');
-            if (imagePreview && uploadContent) {
-                imagePreview.src = '';
-                imagePreview.style.display = 'none';
-                uploadContent.style.display = 'flex';
-            }
+            // Grab details before resetting the form
+            const reportTitle = formData.get('title') || 'your issue';
 
-            // Reset marker
+            // Hide the form, show success banner
+            form.style.display = 'none';
+            const banner = document.getElementById('successBanner');
+            const detail = document.getElementById('successDetail');
+            detail.innerHTML = `"<strong>${reportTitle}</strong>" has been logged with Tracking ID <strong>#${data.reportId}</strong>. Our team will review it shortly.`;
+            banner.classList.remove('hidden');
+            banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Also reset the internal form data & map
+            form.reset();
             if (marker && map) {
                 const center = map.getCenter();
                 marker.setLatLng(center);
@@ -175,10 +133,19 @@ async function handleFormSubmit(e) {
         }
     } catch (err) {
         console.error(err);
-        msgBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${err.message || 'An error occurred. Please try again.'}`;
-        msgBox.className = 'message error';
+        showToast(err.message || 'An error occurred. Please try again.', 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
     }
+}
+
+// Restore the form after showing the success banner
+function resetToForm() {
+    const banner = document.getElementById('successBanner');
+    const form = document.getElementById('reportForm');
+    banner.classList.add('hidden');
+    form.style.display = '';
+    // Scroll back up to the form smoothly
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
