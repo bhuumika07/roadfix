@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "pathole",
+    "description": "proper blockage",
+    "category": "Pothole",
+    "latitude": 31.251665000000003,
+    "longitude": 75.70376750000001,
+    "address": "near girls hostel 2",
+    "image_url": "/uploads/image-1775116344762-626410363.png",
+    "status": "Reported",
+    "solution": null,
+    "created_at": "2026-04-02T07:52:24.778Z"
+  }
+]
