@@ -40,7 +40,23 @@ if (!fs.existsSync(dbPath)) {
 const readData = () => {
     try {
         const data = fs.readFileSync(dbPath, 'utf-8');
-        return data ? JSON.parse(data) : [];
+        let records = data ? JSON.parse(data) : [];
+        
+        // Migration: patch missing createdAt fields
+        let needsSave = false;
+        records = records.map(r => {
+            if (!r.createdAt) {
+                needsSave = true;
+                r.createdAt = r.created_at || new Date().toISOString();
+            }
+            return r;
+        });
+
+        if (needsSave) {
+            writeData(records);
+        }
+
+        return records;
     } catch (err) {
         console.error('Error reading from reports.txt:', err.message);
         return [];
@@ -82,7 +98,7 @@ app.get('/api/reports', (req, res) => {
     let records = readData();
     if (category) records = records.filter(r => r.category === category);
     if (status) records = records.filter(r => r.status === status);
-    records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    records.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json({ success: true, data: records, error: null });
 });
 
@@ -112,7 +128,8 @@ app.post('/api/reports', upload.single('image'), (req, res) => {
         image_url: finalImageUrl,
         status: 'Reported',
         solution: null,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString()
     };
     records.push(newReport);
     writeData(records);

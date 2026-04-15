@@ -93,6 +93,7 @@
                 <label for="filterStatus"><i class="fas fa-tasks"></i> Status:</label>
                 <select id="filterStatus">
                     <option value="">All Statuses</option>
+                    <option value="sla-breached">SLA Breached (Alert)</option>
                     <option value="Reported">Reported</option>
                     <option value="In Progress">In Progress</option>
                     <option value="Resolved">Resolved</option>
@@ -111,6 +112,7 @@
     </main>
 
     <div id="toast-container" class="toast-container"></div>
+    <script src="js/sla.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

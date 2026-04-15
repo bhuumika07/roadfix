@@ -142,7 +142,11 @@ async function fetchReports() {
         const data = await response.json();
 
         if (response.ok) {
-            renderReports(data.data);
+            let filteredReports = data.data;
+            if (status === 'sla-breached') {
+                filteredReports = filteredReports.filter(r => window.getSLAStatus(r) === 'breached');
+            }
+            renderReports(filteredReports);
         } else {
             console.error('Error fetching data:', data.error);
             grid.innerHTML = `<div class="message error"><i class="fas fa-exclamation-triangle"></i> Failed to load reports. Ensure backend is running.</div>`;
@@ -177,11 +181,24 @@ function renderReports(reports) {
         const PLACEHOLDER = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Crect width='400' height='200' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%2394a3b8'%3ENo Image Provided%3C/text%3E%3C/svg%3E`;
         const imageUrl = report.image_url || PLACEHOLDER;
 
-        const dateStr = new Date(report.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+        const dateStr = new Date(report.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
         let badgeClass = 'badge-warning';
         if (report.status === 'In Progress') badgeClass = 'badge-info';
         if (report.status === 'Resolved') badgeClass = 'badge-success';
+
+        // Calculate SLA
+        const slaStatus = window.getSLAStatus(report);
+        const slaText = window.getSLADeadlineText(report);
+        
+        let slaHTML = '';
+        if (slaStatus === 'breached') {
+            slaHTML = `<div style="margin-bottom: 1rem;"><span class="badge-sla-breached">⚠ SLA BREACHED</span><div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">${slaText}</div></div>`;
+        } else if (slaStatus === 'due-soon') {
+            slaHTML = `<div style="margin-bottom: 1rem;"><span class="badge-sla-due-soon">⏰ Due Soon</span><div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">${slaText}</div></div>`;
+        } else {
+            slaHTML = `<div style="margin-bottom: 1rem;"><div style="font-size: 0.75rem; color: var(--text-muted);">${slaText}</div></div>`;
+        }
 
         // Build action buttons based on role
         let statusSelectHTML = '';
@@ -232,6 +249,8 @@ function renderReports(reports) {
                     <span class="report-meta-item"><i class="fas fa-tag" style="color:var(--secondary)"></i> ${escapeHTML(report.category)}</span>
                 </div>
                 
+                ${slaHTML}
+
                 <div class="report-desc">
                     ${escapeHTML(report.description) || '<i>No additional description provided.</i>'}
                 </div>

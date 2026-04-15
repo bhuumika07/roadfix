@@ -1,0 +1,26 @@
+[
+  {
+    "id": "c210f648-0339-48bf-b420-13703fe0a4ad",
+    "timestamp": "2026-04-15T11:42:29.459Z",
+    "action": "user.logout",
+    "actor": {
+      "id": "3",
+      "name": "Priya",
+      "role": "citizen"
+    },
+    "reportId": null,
+    "details": "User Priya logged out"
+  },
+  {
+    "id": "2f4e9571-d9a8-4f6b-951c-dc12e726a0d9",
+    "timestamp": "2026-04-15T11:42:35.199Z",
+    "action": "user.login",
+    "actor": {
+      "id": 3,
+      "name": "Priya",
+      "role": "citizen"
+    },
+    "reportId": null,
+    "details": "User Priya logged into the system"
+  }
+]

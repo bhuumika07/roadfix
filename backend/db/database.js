@@ -13,7 +13,22 @@ if (!fs.existsSync(dbPath)) {
 const readData = () => {
     try {
         const data = fs.readFileSync(dbPath, 'utf-8');
-        return data ? JSON.parse(data) : [];
+        let records = data ? JSON.parse(data) : [];
+        
+        let needsSave = false;
+        records = records.map(r => {
+            if (!r.createdAt) {
+                needsSave = true;
+                r.createdAt = r.created_at || new Date().toISOString();
+            }
+            return r;
+        });
+
+        if (needsSave) {
+            writeData(records);
+        }
+
+        return records;
     } catch (err) {
         console.error('Error reading from reports.txt:', err.message);
         return [];
@@ -62,7 +77,8 @@ const db = {
                 image_url: params[6],
                 status: 'Reported',
                 solution: null,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                createdAt: new Date().toISOString()
             };
             records.push(newRecord);
             writeData(records);
