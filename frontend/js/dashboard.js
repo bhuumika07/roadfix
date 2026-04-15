@@ -1,12 +1,127 @@
 const API_URL = '/api/reports';
 
+// ---- RBAC: Read role from localStorage ----
+function getUserRole() {
+    return (localStorage.getItem('userRole') || '').toLowerCase();
+}
+
+function getUserName() {
+    return localStorage.getItem('userName') || 'User';
+}
+
+function getUserId() {
+    return localStorage.getItem('userId') || 'unknown';
+}
+
+// ---- Auth guard: redirect to login if not logged in ----
+function requireAuth() {
+    const role = getUserRole();
+    if (!role) {
+        window.location.href = 'login.html';
+        return false;
+    }
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    if (!requireAuth()) return;
+
+    setupRoleUI();
     fetchReports();
     fetchStats();
 
     document.getElementById('filterCategory').addEventListener('change', fetchReports);
     document.getElementById('filterStatus').addEventListener('change', fetchReports);
 });
+
+/**
+ * Setup UI elements based on user role:
+ * - Show role badge in header
+ * - Show/hide controls per role
+ * - Show "Assigned to me" filter for inspector
+ */
+function setupRoleUI() {
+    const role = getUserRole();
+    const name = getUserName();
+
+    // Inject role badge + user name into the dashboard header
+    const headerDiv = document.querySelector('.dashboard-header > div');
+    if (headerDiv) {
+        const badgeHTML = `
+            <div class="user-role-display">
+                <span class="role-badge role-${role}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>
+                <span class="user-name-label">Logged in as <strong>${escapeHTML(name)}</strong></span>
+            </div>
+        `;
+        headerDiv.insertAdjacentHTML('beforeend', badgeHTML);
+    }
+
+    // Inspector: show "Assigned to me" filter
+    if (role === 'inspector') {
+        const filtersContainer = document.querySelector('.filters-container');
+        if (filtersContainer) {
+            const assignedFilter = document.createElement('div');
+            assignedFilter.className = 'filter-group';
+            assignedFilter.innerHTML = `
+                <label for="filterAssigned"><i class="fas fa-user-check"></i> View:</label>
+                <select id="filterAssigned">
+                    <option value="all">All Reports</option>
+                    <option value="mine">Assigned to Me</option>
+                </select>
+            `;
+            filtersContainer.appendChild(assignedFilter);
+            document.getElementById('filterAssigned').addEventListener('change', fetchReports);
+        }
+    }
+
+    // Admin: show export & analytics links in header
+    if (role === 'admin') {
+        const headerParent = document.querySelector('.dashboard-header');
+        if (headerParent) {
+            const adminActions = document.createElement('div');
+            adminActions.className = 'admin-header-actions';
+            adminActions.innerHTML = `
+                <button class="btn-admin-action" id="exportBtn" title="Export Reports">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+                <a href="#analytics" class="btn-admin-action" id="analyticsLink" title="Analytics">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </a>
+            `;
+            headerParent.appendChild(adminActions);
+
+            // Export handler
+            document.getElementById('exportBtn').addEventListener('click', exportReports);
+        }
+    }
+
+    // Non-admin: hide export and analytics (they won't be rendered)
+    // Citizen: also hide status update dropdown (handled in renderReports)
+}
+
+/**
+ * Export reports as JSON download (admin only)
+ */
+async function exportReports() {
+    try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        if (!response.ok) {
+            showToast('Failed to export reports.', 'error');
+            return;
+        }
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `roadfix-reports-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Reports exported successfully.', 'success');
+    } catch (err) {
+        showToast('Network error while exporting.', 'error');
+    }
+}
 
 async function fetchReports() {
     const loader = document.getElementById('loader');
@@ -42,6 +157,8 @@ async function fetchReports() {
 
 function renderReports(reports) {
     const grid = document.getElementById('reportsGrid');
+    const role = getUserRole();
+
     if (!reports || reports.length === 0) {
         grid.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 4rem; background: var(--bg-white); border-radius: var(--radius-lg); border: 1px dashed var(--border);">
@@ -66,9 +183,42 @@ function renderReports(reports) {
         if (report.status === 'In Progress') badgeClass = 'badge-info';
         if (report.status === 'Resolved') badgeClass = 'badge-success';
 
+        // Build action buttons based on role
+        let statusSelectHTML = '';
+        let deleteButtonHTML = '';
+
+        // Status update: admin and inspector only
+        if (role === 'admin' || role === 'inspector') {
+            statusSelectHTML = `
+                <div class="status-select-wrapper">
+                    <select class="update-status" data-id="${report.id}">
+                        <option value="Reported" ${report.status === 'Reported' ? 'selected' : ''}>Reported</option>
+                        <option value="In Progress" ${report.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Resolved" ${report.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                    </select>
+                </div>
+            `;
+        } else {
+            // Citizen sees read-only status
+            statusSelectHTML = `
+                <div class="status-read-only">
+                    <span class="badge ${badgeClass}">${report.status}</span>
+                </div>
+            `;
+        }
+
+        // Delete: admin only
+        if (role === 'admin') {
+            deleteButtonHTML = `
+                <button class="btn-small btn-delete" data-id="${report.id}" title="Delete Report">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+            `;
+        }
+
         card.innerHTML = `
             <div class="report-img-wrapper">
-                <img src="${imageUrl}" alt="Report Image" class="report-img" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'200\'%3E%3Crect width=\'400\' height=\'200\' fill=\'%23fef2f2\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'13\' fill=\'%23f87171\'%3EImage failed to load%3C/text%3E%3C/svg%3E'">
+                <img src="${imageUrl}" alt="Report Image" class="report-img" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'400\\' height=\\'200\\'%3E%3Crect width=\\'400\\' height=\\'200\\' fill=\\'%23fef2f2\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-family=\\'sans-serif\\' font-size=\\'13\\' fill=\\'%23f87171\\'%3EImage failed to load%3C/text%3E%3C/svg%3E'">
                 <div class="badge-position">
                     <span class="badge ${badgeClass}">${report.status}</span>
                 </div>
@@ -93,23 +243,15 @@ function renderReports(reports) {
                 </div>` : ''}
                 
                 <div class="report-actions">
-                    <div class="status-select-wrapper">
-                        <select class="update-status" data-id="${report.id}">
-                            <option value="Reported" ${report.status === 'Reported' ? 'selected' : ''}>Reported</option>
-                            <option value="In Progress" ${report.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                            <option value="Resolved" ${report.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
-                        </select>
-                    </div>
-                    <button class="btn-small btn-delete" data-id="${report.id}" title="Delete Report">
-                        <i class="fas fa-trash-alt"></i> Delete
-                    </button>
+                    ${statusSelectHTML}
+                    ${deleteButtonHTML}
                 </div>
             </div>
         `;
         grid.appendChild(card);
     });
 
-    // Add event listeners to status selects
+    // Add event listeners to status selects (admin + inspector only)
     document.querySelectorAll('.update-status').forEach(select => {
         select.addEventListener('change', async (e) => {
             const reportId = e.target.getAttribute('data-id');
@@ -130,7 +272,7 @@ function renderReports(reports) {
         });
     });
 
-    // Add event listeners to delete buttons
+    // Add event listeners to delete buttons (admin only)
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const targetBtn = e.target.closest('button');
@@ -147,12 +289,19 @@ function renderReports(reports) {
 }
 
 async function deleteReport(id) {
+    const role = getUserRole();
     try {
         const response = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'x-user-role': role,
+                'x-user-id': getUserId(),
+                'x-user-name': getUserName()
+            }
         });
         if (!response.ok) {
-            showToast('Failed to delete report. Please try again.', 'error');
+            const data = await response.json();
+            showToast(data.error || 'Failed to delete report. Please try again.', 'error');
         } else {
             showToast('Report permanently deleted.', 'info');
         }
@@ -162,6 +311,7 @@ async function deleteReport(id) {
 }
 
 async function updateStatus(id, newStatus, solution) {
+    const role = getUserRole();
     try {
         const payload = { status: newStatus };
         if (solution !== undefined) {
@@ -171,12 +321,16 @@ async function updateStatus(id, newStatus, solution) {
         const response = await fetch(`${API_URL}/${id}/status`, {
             method: 'PATCH',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-user-role': role,
+                'x-user-id': getUserId(),
+                'x-user-name': getUserName()
             },
             body: JSON.stringify(payload)
         });
         if (!response.ok) {
-            showToast('Failed to update status. Please try again.', 'error');
+            const data = await response.json();
+            showToast(data.error || 'Failed to update status. Please try again.', 'error');
         } else {
             showToast('Status updated successfully.', 'success');
             fetchStats();

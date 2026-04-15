@@ -3,6 +3,9 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const authRoutes = require('./routes/authRoutes');
+const auditRoutes = require('./routes/auditRoutes');
+const checkRole = require('./middleware/checkRole');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,6 +65,17 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ----- AUTH ROUTES -----
+app.use('/api/auth', authRoutes);
+
+// ----- AUDIT ROUTES -----
+app.use('/api/audit', auditRoutes);
+
+// ----- Redirect root to login if not authenticated -----
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
 // ----- API -----
 app.get('/api/reports', (req, res) => {
     const { category, status } = req.query;
@@ -69,13 +83,13 @@ app.get('/api/reports', (req, res) => {
     if (category) records = records.filter(r => r.category === category);
     if (status) records = records.filter(r => r.status === status);
     records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    res.json({ data: records });
+    res.json({ success: true, data: records, error: null });
 });
 
 app.post('/api/reports', upload.single('image'), (req, res) => {
-    if (!req.body) return res.status(400).json({ error: 'Request body is missing' });
+    if (!req.body) return res.status(400).json({ success: false, data: null, error: 'Request body is missing' });
     const { title, description, category, latitude, longitude, address, image_url } = req.body;
-    if (!title || !category) return res.status(400).json({ error: 'Missing title/category' });
+    if (!title || !category) return res.status(400).json({ success: false, data: null, error: 'Missing title/category' });
 
     // Prefer uploaded file; fall back to image_url text field
     let finalImageUrl = null;
@@ -102,19 +116,19 @@ app.post('/api/reports', upload.single('image'), (req, res) => {
     };
     records.push(newReport);
     writeData(records);
-    res.status(201).json({ message: 'Success', reportId: newId });
+    res.status(201).json({ success: true, data: { reportId: newId }, error: null });
 });
 
-app.patch('/api/reports/:id/status', (req, res) => {
+app.patch('/api/reports/:id/status', checkRole(['admin', 'inspector']), (req, res) => {
     const { id } = req.params;
     const { status, solution } = req.body;
     const records = readData();
     const index = records.findIndex(r => r.id == id);
-    if (index === -1) return res.status(404).json({ error: 'Not found' });
+    if (index === -1) return res.status(404).json({ success: false, data: null, error: 'Not found' });
     records[index].status = status;
     if (solution !== undefined) records[index].solution = solution;
     writeData(records);
-    res.json({ message: 'Updated' });
+    res.json({ success: true, data: { message: 'Updated' }, error: null });
 });
 
 // NOTE: /stats MUST be before /:id so Express doesn't treat 'stats' as an id param
@@ -125,17 +139,17 @@ app.get('/api/reports/stats', (req, res) => {
         return acc;
     }, {});
     const rows = Object.keys(statsObj).map(s => ({ status: s, count: statsObj[s] }));
-    res.json({ data: rows });
+    res.json({ success: true, data: rows, error: null });
 });
 
-app.delete('/api/reports/:id', (req, res) => {
+app.delete('/api/reports/:id', checkRole(['admin']), (req, res) => {
     const { id } = req.params;
     let records = readData();
     const initial = records.length;
     records = records.filter(r => r.id != id);
-    if (records.length === initial) return res.status(404).json({ error: 'Not found' });
+    if (records.length === initial) return res.status(404).json({ success: false, data: null, error: 'Not found' });
     writeData(records);
-    res.json({ message: 'Deleted' });
+    res.json({ success: true, data: { message: 'Deleted' }, error: null });
 });
 
 // START

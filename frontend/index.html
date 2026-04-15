@@ -17,16 +17,56 @@
         <div class="container nav-container">
             <a href="index.html" class="logo"><i class="fas fa-road"></i> RoadFix</a>
             <div class="nav-right">
-                <ul class="nav-links">
                     <li><a href="index.html" class="active">Report Issue</a></li>
                     <li><a href="dashboard.html">Dashboard</a></li>
+                    <li id="auditNavLink" style="display: none;"><a href="audit.html">Audit Log</a></li>
                 </ul>
+                <div class="nav-user-info" id="navUserInfo"></div>
                 <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
                     <i class="fas fa-moon" id="theme-icon"></i>
                 </button>
             </div>
         </div>
     </nav>
+
+    <!-- Auth guard + nav user display -->
+    <script>
+        (function() {
+            const role = localStorage.getItem('userRole');
+            const name = localStorage.getItem('userName');
+            if (!role) { window.location.href = 'login.html'; return; }
+            
+            if (role === 'admin') {
+                const auditLink = document.getElementById('auditNavLink');
+                if (auditLink) auditLink.style.display = 'block';
+            }
+
+            const info = document.getElementById('navUserInfo');
+            if (info) {
+                info.innerHTML = `
+                    <span class="role-badge role-${role}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>
+                    <button class="btn-logout" onclick="handleLogout()" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                `;
+            }
+
+            window.handleLogout = async function() {
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'x-user-role': role || 'unknown',
+                            'x-user-id': localStorage.getItem('userId') || 'unknown',
+                            'x-user-name': name || 'Unknown'
+                        }
+                    });
+                } catch(e) { console.error('Logout error:', e); }
+                localStorage.clear();
+                window.location.href = 'login.html';
+            };
+        })();
+    </script>
 
     <div class="hero">
         <div class="container">
