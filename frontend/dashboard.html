@@ -22,12 +22,51 @@
                     <li><a href="faq.html">FAQ</a></li>
                     <li><a href="contact.html">Contact</a></li>
                 </ul>
+                <div class="nav-user-info" id="navUserInfo"></div>
                 <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
                     <i class="fas fa-moon" id="theme-icon"></i>
                 </button>
             </div>
         </div>
     </nav>
+
+    <!-- Auth guard + nav user display -->
+    <script>
+        (function() {
+            const role = localStorage.getItem('userRole');
+            const name = localStorage.getItem('userName');
+            if (!role) { window.location.href = 'login.html'; return; }
+            if (role === 'admin') {
+                const auditLink = document.getElementById('auditNavLink');
+                if (auditLink) auditLink.style.display = 'block';
+            }
+
+            const info = document.getElementById('navUserInfo');
+            if (info) {
+                info.innerHTML = `
+                    <span class="role-badge role-${role}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>
+                    <button class="btn-logout" onclick="handleLogout()" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                `;
+            }
+
+            window.handleLogout = async function() {
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'x-user-role': role || 'unknown',
+                            'x-user-id': localStorage.getItem('userId') || 'unknown',
+                            'x-user-name': name || 'Unknown'
+                        }
+                    });
+                } catch(e) { console.error('Logout error:', e); }
+                localStorage.clear();
+                window.location.href = 'login.html';
+            };
+        })();
+    </script>
 
     <main class="container">
         <header class="dashboard-header">
@@ -58,6 +97,7 @@
                 <label for="filterStatus"><i class="fas fa-tasks"></i> Status:</label>
                 <select id="filterStatus">
                     <option value="">All Statuses</option>
+                    <option value="sla-breached">SLA Breached (Alert)</option>
                     <option value="Reported">Reported</option>
                     <option value="In Progress">In Progress</option>
                     <option value="Resolved">Resolved</option>
@@ -76,6 +116,7 @@
     </main>
 
     <div id="toast-container" class="toast-container"></div>
+    <script src="js/sla.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

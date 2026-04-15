@@ -105,7 +105,12 @@ async function handleFormSubmit(e) {
         // Send as multipart/form-data so the server (multer) can receive the image file
         const response = await fetch(API_URL, {
             method: 'POST',
-            body: formData   // DO NOT set Content-Type header; browser sets it with boundary automatically
+            body: formData,   // DO NOT set Content-Type header; browser sets it with boundary automatically
+            headers: {
+                'x-user-role': localStorage.getItem('userRole') || 'unknown',
+                'x-user-id': localStorage.getItem('userId') || 'unknown',
+                'x-user-name': localStorage.getItem('userName') || 'Unknown'
+            }
         });
 
         const data = await response.json();
